@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useMutation } from "convex/react";
+
 import Link from "next/link";
 import {
   Authenticated,
@@ -41,18 +44,42 @@ export default function Home() {
 }
 
 function CurrentUser() {
+  const ensureCurrentUser = useMutation(api.users.ensureCurrentUser);
   const user = useQuery(api.users.getCurrentUser);
 
-  if (user === undefined) {
-    return <p>Loading user profile...</p>;
+  const [profileReady, setProfileReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    ensureCurrentUser()
+      .then(() => {
+        if (!cancelled) {
+          setProfileReady(true);
+        }
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setError(error.message);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureCurrentUser]);
+
+  if (error) {
+    return <p>Profile creation failed: {error}</p>;
+  }
+
+  if (!profileReady || user === undefined) {
+    return <p>Creating your user profile...</p>;
   }
 
   if (user === null) {
-    return (
-      <p>
-        Authentication works, but no Convex user profile exists yet.
-      </p>
-    );
+    return <p>Profile not found. Please refresh the page.</p>;
   }
 
   return (
