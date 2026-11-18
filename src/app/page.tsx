@@ -39,6 +39,7 @@ export default function Home() {
         </div>
         <CurrentUser />
       </Authenticated>
+      <ToolCatalogue />
     </main>
   );
 }
@@ -88,5 +89,49 @@ function CurrentUser() {
       <p>{user.name ?? user.email ?? "User"}</p>
       <p>Role: {user.role}</p>
     </div>
+  );
+}
+
+function ToolCatalogue() {
+  const tools = useQuery(api.tools.list);
+
+  if (tools === undefined) {
+    return <p>Loading tools...</p>;
+  }
+
+  return (
+    <section className="w-full max-w-3xl mt-12">
+      <h2 className="text-2xl font-bold mb-6">
+        Available Tools
+      </h2>
+
+      {tools.length === 0 ? (
+        <p className="text-zinc-500">
+          No tools are available yet. Check back soon!
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {tools.map((tool) => (
+            <article
+              key={tool._id}
+              className="rounded-lg border border-zinc-200 p-5"
+            >
+              <h3 className="text-lg font-semibold">
+                {tool.title}
+              </h3>
+
+              <p className="mt-2 text-sm text-zinc-600">
+                {tool.description}
+              </p>
+
+              <div className="mt-4 flex justify-between text-sm text-zinc-500">
+                <span>{tool.category}</span>
+                <span>Condition: {tool.condition}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
