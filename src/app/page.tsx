@@ -38,6 +38,7 @@ export default function Home() {
           <UserButton />
         </div>
         <CurrentUser />
+	<AddToolForm />
       </Authenticated>
       <ToolCatalogue />
     </main>
@@ -135,3 +136,154 @@ function ToolCatalogue() {
     </section>
   );
 }
+
+
+function AddToolForm() {
+  const createTool = useMutation(api.tools.create);
+  const user = useQuery(api.users.getCurrentUser);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [condition, setCondition] = useState<
+    "new" | "good" | "fair" | "worn"
+  >("good");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  async function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setSubmitting(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      await createTool({
+        title,
+        description,
+        category,
+        condition,
+      });
+
+      setTitle("");
+      setDescription("");
+      setCategory("");
+      setCondition("good");
+      setSuccess(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <section className="mt-12 w-full max-w-3xl">
+      <h2 className="mb-6 text-2xl font-bold">
+        Add a Tool
+      </h2>
+
+      {user === undefined ? (
+        <p>Loading your profile...</p>
+      ) : user === null ? (
+        <p>Your user profile is not available.</p>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 rounded-lg border border-zinc-200 p-6"
+        >
+          <div>
+            <label htmlFor="tool-title" className="block mb-1 font-medium">
+              Tool name
+            </label>
+            <input
+              id="tool-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              maxLength={100}
+              className="w-full rounded border border-zinc-300 p-2"
+              placeholder="e.g. Cordless drill"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="tool-description" className="block mb-1 font-medium">
+              Description
+            </label>
+            <textarea
+              id="tool-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+              maxLength={1000}
+              rows={3}
+              className="w-full rounded border border-zinc-300 p-2"
+              placeholder="Describe the tool and how it can be used..."
+            />
+          </div>
+
+          <div>
+            <label htmlFor="tool-category" className="block mb-1 font-medium">
+              Category
+            </label>
+            <input
+              id="tool-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+              maxLength={50}
+              className="w-full rounded border border-zinc-300 p-2"
+              placeholder="e.g. DIY, Gardening, Kitchen"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="tool-condition" className="block mb-1 font-medium">
+              Condition
+            </label>
+            <select
+              id="tool-condition"
+              value={condition}
+              onChange={(e) =>
+                setCondition(e.target.value as typeof condition)
+              }
+              className="w-full rounded border border-zinc-300 p-2"
+            >
+              <option value="new">New</option>
+              <option value="good">Good</option>
+              <option value="fair">Fair</option>
+              <option value="worn">Worn</option>
+            </select>
+          </div>
+
+          {error && (
+            <p className="text-red-600">{error}</p>
+          )}
+
+          {success && (
+            <p className="text-green-700">
+              Tool added successfully!
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting || !user}
+            className="rounded bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {submitting ? "Adding tool..." : "Add Tool"}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
