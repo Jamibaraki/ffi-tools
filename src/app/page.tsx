@@ -39,6 +39,7 @@ export default function Home() {
         </div>
         <CurrentUser />
 	<AddToolForm />
+	<MyTools />
       </Authenticated>
       <ToolCatalogue />
     </main>
@@ -282,6 +283,56 @@ function AddToolForm() {
             {submitting ? "Adding tool..." : "Add Tool"}
           </button>
         </form>
+      )}
+    </section>
+  );
+}
+
+
+
+function MyTools() {
+  const tools = useQuery(api.tools.listMine);
+
+  if (tools === undefined) {
+    return <p>Loading your tools...</p>;
+  }
+
+  return (
+    <section className="mt-12 w-full max-w-3xl">
+      <h2 className="mb-6 text-2xl font-bold">
+        My Tools
+      </h2>
+
+      {tools.length === 0 ? (
+        <p className="text-zinc-500">
+          You haven't listed any tools yet.
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {tools.map((tool) => (
+            <article
+              key={tool._id}
+              className="rounded-lg border border-zinc-200 p-5"
+            >
+              <h3 className="text-lg font-semibold">
+                {tool.title}
+              </h3>
+
+              <p className="mt-2 text-sm text-zinc-600">
+                {tool.description}
+              </p>
+
+              <div className="mt-4 flex justify-between text-sm text-zinc-500">
+                <span>{tool.category}</span>
+                <span>Condition: {tool.condition}</span>
+              </div>
+
+              <p className="mt-2 text-xs text-zinc-500">
+                Status: {tool.status}
+              </p>
+            </article>
+          ))}
+        </div>
       )}
     </section>
   );

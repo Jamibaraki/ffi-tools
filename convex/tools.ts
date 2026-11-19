@@ -16,6 +16,37 @@ export const list = query({
   },
 });
 
+// Return tools belonging to the authenticated user.
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      return [];
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("tools")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerId", user._id)
+      )
+      .order("desc")
+      .take(100);
+  },
+});
+
 // Return a single available tool by ID.
 export const getById = query({
   args: {
