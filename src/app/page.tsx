@@ -292,6 +292,7 @@ function AddToolForm() {
 
 function MyTools() {
   const tools = useQuery(api.tools.listMine);
+  const removeTool = useMutation(api.tools.remove);
 
   if (tools === undefined) {
     return <p>Loading your tools...</p>;
@@ -305,7 +306,7 @@ function MyTools() {
 
       {tools.length === 0 ? (
         <p className="text-zinc-500">
-          You haven't listed any tools yet.
+          You haven&apos;t listed any tools yet.
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -330,6 +331,35 @@ function MyTools() {
               <p className="mt-2 text-xs text-zinc-500">
                 Status: {tool.status}
               </p>
+
+	      <div className="mt-4">
+		  <button
+		    type="button"
+		    onClick={async () => {
+		      if (
+		        !window.confirm(
+		          `Are you sure you want to remove "${tool.title}"?`
+		        )
+		      ) {
+		        return;
+		      }
+
+		      try {
+		        await removeTool({ id: tool._id });
+		      } catch (error) {
+		        alert(
+		          error instanceof Error
+		            ? error.message
+		            : "Failed to remove tool."
+		        );
+		      }
+		    }}
+		    className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+		  >
+		    Remove
+		  </button>
+		</div>
+
             </article>
           ))}
         </div>

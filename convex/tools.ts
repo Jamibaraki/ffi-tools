@@ -196,3 +196,53 @@ export const update = mutation({
     await ctx.db.patch(id, updates);
   },
 });
+
+// Delete a tool, provided the user owns it or is an admin.
+export const remove = mutation({
+  args: {
+    id: v.id("tools"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("You must be signed in to remove a tool.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) {
+      throw new Error("User profile not found.");
+    }
+
+    const tool = await ctx.db.get(args.id);
+
+    if (!tool) {
+      throw new Error("Tool not found.");
+    }
+
+    if (tool.ownerId !== user._id && user.role !== "admin") {
+      throw new Error("You do not have permission to remove this tool.");
+    }
+
+    const requests = await ctx.db
+      .query("borrowRequests")
+      .withIndex("by_tool", (q) =>
+        q.eq("toolId", args.id)
+      )
+      .take(1);
+
+    if (requests.length > 0) {
+      throw new Error(
+        "This tool has borrowing history and cannot be deleted."
+      );
+    }
+
+    await ctx.db.delete("tools", args.id);
+  },
+});
