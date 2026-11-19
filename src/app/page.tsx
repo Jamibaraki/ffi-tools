@@ -118,9 +118,14 @@ function ToolCatalogue() {
               key={tool._id}
               className="rounded-lg border border-zinc-200 p-5"
             >
-              <h3 className="text-lg font-semibold">
-                {tool.title}
-              </h3>
+		<h3 className="text-lg font-semibold">
+		  <Link
+		    href={`/tools/${tool._id}`}
+		    className="hover:text-blue-600 hover:underline"
+		  >
+		    {tool.title}
+		  </Link>
+		</h3>
 
               <p className="mt-2 text-sm text-zinc-600">
                 {tool.description}
