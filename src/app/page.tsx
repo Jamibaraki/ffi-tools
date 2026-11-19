@@ -515,6 +515,7 @@ function MyTools() {
 function IncomingRequests() {
   const requests = useQuery(api.borrowRequests.listIncoming);
   const reviewRequest = useMutation(api.borrowRequests.review);
+  const updateLoanStatus = useMutation(api.borrowRequests.updateLoanStatus);
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -540,6 +541,29 @@ function IncomingRequests() {
       setBusyId(null);
     }
   }
+
+  async function handleLoanStatus(
+  requestId: (typeof requests extends (infer T)[] | undefined
+    ? T extends { _id: infer ID }
+      ? ID
+      : never
+    : never),
+  status: "borrowed" | "returned"
+) {
+  setBusyId(requestId);
+  setError(null);
+
+  try {
+    await updateLoanStatus({ requestId, status });
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : "Something went wrong."
+    );
+  } finally {
+    setBusyId(null);
+  }
+}
+
 
   if (requests === undefined) {
     return <p>Loading incoming requests...</p>;
@@ -583,24 +607,45 @@ function IncomingRequests() {
                 Status: <span className="capitalize">{request.status}</span>
               </p>
 
-              {request.status === "pending" && (
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => handleReview(request._id, "approved")}
-                    disabled={busyId !== null}
-                    className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {busyId === request._id ? "Processing..." : "Approve"}
-                  </button>
+				
+		{request.status === "pending" && (
+		  <div className="mt-4 flex gap-3">
+		    <button
+		      onClick={() => handleReview(request._id, "approved")}
+		      disabled={busyId !== null}
+		      className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+		    >
+		      {busyId === request._id ? "Processing..." : "Approve"}
+		    </button>
 
-                  <button
-                    onClick={() => handleReview(request._id, "declined")}
-                    disabled={busyId !== null}
-                    className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
-                  >
-                    Decline
-                  </button>
-                </div>
+		    <button
+		      onClick={() => handleReview(request._id, "declined")}
+		      disabled={busyId !== null}
+		      className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+		    >
+		      Decline
+		    </button>
+		  </div>
+		)}
+
+		{request.status === "approved" && (
+		  <button
+		    onClick={() => handleLoanStatus(request._id, "borrowed")}
+		    disabled={busyId !== null}
+		    className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+		  >
+		    {busyId === request._id ? "Processing..." : "Mark as borrowed"}
+		  </button>
+		)}
+
+		{request.status === "borrowed" && (
+		  <button
+		    onClick={() => handleLoanStatus(request._id, "returned")}
+		    disabled={busyId !== null}
+		    className="mt-4 rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+		  >
+		    {busyId === request._id ? "Processing..." : "Mark as returned"}
+		  </button>
               )}
             </article>
           ))}
@@ -609,4 +654,5 @@ function IncomingRequests() {
     </section>
   );
 }
+
 

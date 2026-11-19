@@ -227,3 +227,66 @@ export const review = mutation({
   },
 });
 
+
+
+export const updateLoanStatus = mutation({
+  args: {
+    requestId: v.id("borrowRequests"),
+    status: v.union(
+      v.literal("borrowed"),
+      v.literal("returned")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) {
+      throw new Error("User profile not found.");
+    }
+
+    const request = await ctx.db.get(args.requestId);
+
+    if (!request) {
+      throw new Error("Borrowing request not found.");
+    }
+
+    // Only the tool owner can update the loan status.
+    if (request.ownerId !== user._id) {
+      throw new Error("You cannot update this loan.");
+    }
+
+    // Enforce the correct sequence of transitions.
+    if (
+      args.status === "borrowed" &&
+      request.status !== "approved"
+    ) {
+      throw new Error("Only approved requests can become borrowed.");
+    }
+
+    if (
+      args.status === "returned" &&
+      request.status !== "borrowed"
+    ) {
+      throw new Error("Only borrowed tools can be marked as returned.");
+    }
+
+    await ctx.db.patch(args.requestId, {
+      status: args.status,
+      ...(args.status === "returned" && {
+        returnedAt: Date.now(),
+      }),
+    });
+  },
+});
+
