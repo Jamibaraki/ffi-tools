@@ -40,6 +40,7 @@ export default function Home() {
         <CurrentUser />
 	<AddToolForm />
 	<MyTools />
+	<IncomingRequests />
       </Authenticated>
       <ToolCatalogue />
     </main>
@@ -501,6 +502,106 @@ function MyTools() {
 )}
 
 
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
+
+function IncomingRequests() {
+  const requests = useQuery(api.borrowRequests.listIncoming);
+  const reviewRequest = useMutation(api.borrowRequests.review);
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleReview(
+    requestId: (typeof requests extends (infer T)[] | undefined
+      ? T extends { _id: infer ID }
+        ? ID
+        : never
+      : never),
+    decision: "approved" | "declined"
+  ) {
+    setBusyId(requestId);
+    setError(null);
+
+    try {
+      await reviewRequest({ requestId, decision });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong."
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (requests === undefined) {
+    return <p>Loading incoming requests...</p>;
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-4 text-2xl font-bold">Incoming Requests</h2>
+
+      {error && <p className="mb-4 text-red-600">{error}</p>}
+
+      {requests.length === 0 ? (
+        <p className="text-gray-600">You haven&apos;t received any requests yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {requests.map((request) => (
+            <article
+              key={request._id}
+              className="rounded-lg border border-gray-200 p-4"
+            >
+              <h3 className="text-lg font-semibold">
+                {request.toolTitle}
+              </h3>
+
+              <p className="mt-1">
+                Requested by: {request.borrowerName}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-600">
+                {new Date(request.startDate).toLocaleDateString()} –{" "}
+                {new Date(request.endDate).toLocaleDateString()}
+              </p>
+
+              {request.message && (
+                <p className="mt-3 whitespace-pre-wrap">
+                  {request.message}
+                </p>
+              )}
+
+              <p className="mt-3">
+                Status: <span className="capitalize">{request.status}</span>
+              </p>
+
+              {request.status === "pending" && (
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => handleReview(request._id, "approved")}
+                    disabled={busyId !== null}
+                    className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {busyId === request._id ? "Processing..." : "Approve"}
+                  </button>
+
+                  <button
+                    onClick={() => handleReview(request._id, "declined")}
+                    disabled={busyId !== null}
+                    className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
             </article>
           ))}
         </div>

@@ -1,6 +1,50 @@
 
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+
+
+export const listIncoming = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) return [];
+
+    const requests = await ctx.db
+      .query("borrowRequests")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerId", user._id)
+      )
+      .order("desc")
+      .collect();
+
+    // Include the tool and borrower details for the interface.
+    return await Promise.all(
+      requests.map(async (request) => {
+        const tool = await ctx.db.get(request.toolId);
+        const borrower = await ctx.db.get(request.borrowerId);
+
+        return {
+          ...request,
+          toolTitle: tool?.title ?? "Deleted tool",
+          borrowerName: borrower?.name ?? "Unknown borrower",
+        };
+      })
+    );
+  },
+});
+
+
+
 
 export const create = mutation({
   args: {
@@ -88,6 +132,97 @@ export const create = mutation({
       message: args.message?.trim() || undefined,
       status: "pending",
       createdAt: Date.now(),
+    });
+  },
+});
+
+
+
+export const review = mutation({
+  args: {
+    requestId: v.id("borrowRequests"),
+    decision: v.union(
+      v.literal("approved"),
+      v.literal("declined")
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Require authentication.
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("You must be signed in to review requests.");
+    }
+
+    // Find the current user.
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) {
+      throw new Error("User profile not found.");
+    }
+
+    // Find the borrowing request.
+    const request = await ctx.db.get(args.requestId);
+
+    if (!request) {
+      throw new Error("Borrowing request not found.");
+    }
+
+    // Only the tool's owner can review the request.
+    if (request.ownerId !== user._id) {
+      throw new Error("You cannot review this request.");
+    }
+
+    // Only pending requests can be reviewed.
+    if (request.status !== "pending") {
+      throw new Error("This request has already been reviewed.");
+    }
+
+    if (args.decision === "approved") {
+      const tool = await ctx.db.get(request.toolId);
+
+      if (!tool || tool.status !== "available") {
+        throw new Error("This tool is no longer available.");
+      }
+
+      // Check that no other active request overlaps these dates.
+      const existingRequests = await ctx.db
+        .query("borrowRequests")
+        .withIndex("by_tool", (q) =>
+          q.eq("toolId", request.toolId)
+        )
+        .collect();
+
+      const hasConflict = existingRequests.some((existing) => {
+        if (existing._id === request._id) return false;
+
+        const isActive =
+          existing.status === "pending" ||
+          existing.status === "approved" ||
+          existing.status === "borrowed";
+
+        const overlaps =
+          request.startDate < existing.endDate &&
+          request.endDate > existing.startDate;
+
+        return isActive && overlaps;
+      });
+
+      if (hasConflict) {
+        throw new Error(
+          "Another active request conflicts with these dates."
+        );
+      }
+    }
+
+    await ctx.db.patch(args.requestId, {
+      status: args.decision,
+      reviewedAt: Date.now(),
     });
   },
 });
