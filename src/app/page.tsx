@@ -294,6 +294,18 @@ function MyTools() {
   const tools = useQuery(api.tools.listMine);
   const removeTool = useMutation(api.tools.remove);
 
+  const updateTool = useMutation(api.tools.update);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editCondition, setEditCondition] = useState<
+  "new" | "good" | "fair" | "worn"
+>("good");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   if (tools === undefined) {
     return <p>Loading your tools...</p>;
   }
@@ -332,33 +344,157 @@ function MyTools() {
                 Status: {tool.status}
               </p>
 
-	      <div className="mt-4">
-		  <button
-		    type="button"
-		    onClick={async () => {
-		      if (
-		        !window.confirm(
-		          `Are you sure you want to remove "${tool.title}"?`
-		        )
-		      ) {
-		        return;
-		      }
 
-		      try {
-		        await removeTool({ id: tool._id });
-		      } catch (error) {
-		        alert(
-		          error instanceof Error
-		            ? error.message
-		            : "Failed to remove tool."
-		        );
-		      }
-		    }}
-		    className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
-		  >
-		    Remove
-		  </button>
-		</div>
+<div className="mt-4 flex gap-2">
+  <button
+    type="button"
+    onClick={() => {
+      setEditingId(tool._id);
+      setEditTitle(tool.title);
+      setEditDescription(tool.description);
+      setEditCategory(tool.category);
+      setEditCondition(tool.condition);
+      setEditError(null);
+    }}
+    className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+  >
+    Edit
+  </button>
+
+  <button
+    type="button"
+    onClick={async () => {
+      if (
+        !window.confirm(
+          `Are you sure you want to remove "${tool.title}"?`
+        )
+      ) {
+        return;
+      }
+
+      try {
+        await removeTool({ id: tool._id });
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Failed to remove tool."
+        );
+      }
+    }}
+    className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+  >
+    Remove
+  </button>
+</div>
+
+{editingId === tool._id && (
+  <form
+    className="mt-4 flex flex-col gap-3 border-t border-zinc-200 pt-4"
+    onSubmit={async (event) => {
+      event.preventDefault();
+      setSaving(true);
+      setEditError(null);
+
+      try {
+        await updateTool({
+          id: tool._id,
+          title: editTitle,
+          description: editDescription,
+          category: editCategory,
+          condition: editCondition,
+        });
+
+        setEditingId(null);
+      } catch (error) {
+        setEditError(
+          error instanceof Error
+            ? error.message
+            : "Failed to update tool."
+        );
+      } finally {
+        setSaving(false);
+      }
+    }}
+  >
+    <label className="font-medium" htmlFor={`edit-title-${tool._id}`}>
+      Tool name
+    </label>
+    <input
+      id={`edit-title-${tool._id}`}
+      value={editTitle}
+      onChange={(event) => setEditTitle(event.target.value)}
+      required
+      maxLength={100}
+      className="rounded border border-zinc-300 p-2"
+    />
+
+    <label className="font-medium" htmlFor={`edit-description-${tool._id}`}>
+      Description
+    </label>
+    <textarea
+      id={`edit-description-${tool._id}`}
+      value={editDescription}
+      onChange={(event) => setEditDescription(event.target.value)}
+      required
+      maxLength={1000}
+      rows={3}
+      className="rounded border border-zinc-300 p-2"
+    />
+
+    <label className="font-medium" htmlFor={`edit-category-${tool._id}`}>
+      Category
+    </label>
+    <input
+      id={`edit-category-${tool._id}`}
+      value={editCategory}
+      onChange={(event) => setEditCategory(event.target.value)}
+      required
+      maxLength={50}
+      className="rounded border border-zinc-300 p-2"
+    />
+
+    <label className="font-medium" htmlFor={`edit-condition-${tool._id}`}>
+      Condition
+    </label>
+    <select
+      id={`edit-condition-${tool._id}`}
+      value={editCondition}
+      onChange={(event) =>
+        setEditCondition(event.target.value as typeof editCondition)
+      }
+      className="rounded border border-zinc-300 p-2"
+    >
+      <option value="new">New</option>
+      <option value="good">Good</option>
+      <option value="fair">Fair</option>
+      <option value="worn">Worn</option>
+    </select>
+
+    {editError && (
+      <p className="text-sm text-red-600">{editError}</p>
+    )}
+
+    <div className="flex gap-2">
+      <button
+        type="submit"
+        disabled={saving}
+        className="rounded bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+      >
+        {saving ? "Saving..." : "Save Changes"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setEditingId(null)}
+        className="rounded border border-zinc-300 px-4 py-2 text-sm"
+      >
+        Cancel
+      </button>
+    </div>
+  </form>
+)}
+
 
             </article>
           ))}
