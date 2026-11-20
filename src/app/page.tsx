@@ -41,6 +41,7 @@ export default function Home() {
 	<AddToolForm />
 	<MyTools />
 	<IncomingRequests />
+	<MyRequests />
       </Authenticated>
       <ToolCatalogue />
     </main>
@@ -655,4 +656,74 @@ function IncomingRequests() {
   );
 }
 
+
+
+function MyRequests() {
+  const requests = useQuery(api.borrowRequests.listMine);
+
+  if (requests === undefined) {
+    return <p>Loading your borrowing requests...</p>;
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-4 text-2xl font-bold">My Requests</h2>
+
+      {requests.length === 0 ? (
+        <p className="text-gray-600">
+          You haven&apos;t made any borrowing requests yet.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {requests.map((request) => (
+            <article
+              key={request._id}
+              className="rounded-lg border border-gray-200 p-4"
+            >
+              <h3 className="text-lg font-semibold">
+                {request.toolTitle}
+              </h3>
+
+              <p className="mt-1">
+                Owner: {request.ownerName}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-600">
+                {new Date(request.startDate).toLocaleDateString()} –{" "}
+                {new Date(request.endDate).toLocaleDateString()}
+              </p>
+
+              {request.message && (
+                <p className="mt-3 whitespace-pre-wrap">
+                  Your message: {request.message}
+                </p>
+              )}
+
+              <p className="mt-3">
+                Status:{" "}
+                <span className="font-semibold capitalize">
+                  {request.status}
+                </span>
+              </p>
+
+              {request.reviewedAt && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Reviewed:{" "}
+                  {new Date(request.reviewedAt).toLocaleDateString()}
+                </p>
+              )}
+
+              {request.returnedAt && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Returned:{" "}
+                  {new Date(request.returnedAt).toLocaleDateString()}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 

@@ -45,6 +45,47 @@ export const listIncoming = query({
 
 
 
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) return [];
+
+    const requests = await ctx.db
+      .query("borrowRequests")
+      .withIndex("by_borrower", (q) =>
+        q.eq("borrowerId", user._id)
+      )
+      .order("desc")
+      .take(100);
+
+    return await Promise.all(
+      requests.map(async (request) => {
+        const tool = await ctx.db.get(request.toolId);
+        const owner = await ctx.db.get(request.ownerId);
+
+        return {
+          ...request,
+          toolTitle: tool?.title ?? "Deleted tool",
+          ownerName: owner?.name ?? "Unknown owner",
+        };
+      })
+    );
+  },
+});
+
+
+
 
 export const create = mutation({
   args: {
