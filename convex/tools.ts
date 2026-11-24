@@ -47,6 +47,37 @@ export const listMine = query({
   },
 });
 
+
+// Return all tools for administrators.
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user || user.role !== "admin") {
+      throw new Error("You do not have permission to view all tools.");
+    }
+
+    return await ctx.db
+      .query("tools")
+      .order("desc")
+      .take(200);
+  },
+});
+
+
+
 // Return a single available tool by ID.
 export const getById = query({
   args: {
