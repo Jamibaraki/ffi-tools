@@ -661,12 +661,42 @@ function IncomingRequests() {
 function MyRequests() {
   const requests = useQuery(api.borrowRequests.listMine);
 
+	const cancelRequest = useMutation(api.borrowRequests.cancel);
+	const [error, setError] = useState<string | null>(null);
+	const [busyId, setBusyId] = useState<string | null>(null);
+
+	async function handleCancel(id: (typeof requests extends (infer T)[] | undefined
+	  ? T extends { _id: infer ID }
+	    ? ID
+	    : never
+	  : never)) {
+	  setError(null);
+	  setBusyId(id);
+
+	  try {
+	    await cancelRequest({ id });
+	  } catch (err) {
+	    setError(
+	      err instanceof Error ? err.message : "Failed to cancel request."
+	    );
+	  } finally {
+	    setBusyId(null);
+	  }
+	}
+  
+
   if (requests === undefined) {
     return <p>Loading your borrowing requests...</p>;
   }
 
   return (
     <section className="mt-8">
+
+	{error && (
+	  <p className="mb-3 text-sm text-red-600">{error}</p>
+	)}
+
+
       <h2 className="mb-4 text-2xl font-bold">My Requests</h2>
 
       {requests.length === 0 ? (
@@ -705,6 +735,17 @@ function MyRequests() {
                   {request.status}
                 </span>
               </p>
+
+	      {(request.status === "pending" ||
+		  request.status === "approved") && (
+		  <button
+		    onClick={() => handleCancel(request._id)}
+		    disabled={busyId === request._id}
+		    className="mt-3 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+		  >
+		    {busyId === request._id ? "Cancelling..." : "Cancel request"}
+		  </button>
+		)}
 
               {request.reviewedAt && (
                 <p className="mt-1 text-sm text-gray-500">

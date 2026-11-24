@@ -331,3 +331,51 @@ export const updateLoanStatus = mutation({
   },
 });
 
+
+// Allow a borrower to cancel their own pending or approved request.
+export const cancel = mutation({
+  args: {
+    id: v.id("borrowRequests"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("You must be signed in to cancel a request.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user) {
+      throw new Error("User profile not found.");
+    }
+
+    const request = await ctx.db.get(args.id);
+
+    if (!request) {
+      throw new Error("Borrowing request not found.");
+    }
+
+    if (request.borrowerId !== user._id) {
+      throw new Error("You can only cancel your own requests.");
+    }
+
+    if (
+      request.status !== "pending" &&
+      request.status !== "approved"
+    ) {
+      throw new Error(
+        "Only pending or approved requests can be cancelled."
+      );
+    }
+
+    await ctx.db.patch(args.id, {
+      status: "cancelled",
+    });
+  },
+});
