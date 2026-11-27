@@ -138,6 +138,7 @@ async function handleRemove(id: (typeof tools extends (infer T)[] | undefined
         </div>
       )}
     <AdminLoans />
+    <TrustedLenders />
     </main>
   );
 }
@@ -201,6 +202,88 @@ function AdminLoans() {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+
+
+function TrustedLenders() {
+  const users = useQuery(api.users.listAll);
+  const setTrustedLender = useMutation(api.users.setTrustedLender);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (users === undefined) {
+    return <p>Loading users...</p>;
+  }
+
+  const handleToggle = async (
+    userId: (typeof users)[number]["_id"],
+    isTrustedLender: boolean
+  ) => {
+    setError(null);
+    setBusyId(userId);
+
+    try {
+      await setTrustedLender({ userId, isTrustedLender });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update lender status."
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <section className="mt-10">
+      <h2 className="mb-4 text-2xl font-semibold">
+        Trusted Lenders
+      </h2>
+
+      {error && (
+        <p className="mb-4 text-sm text-red-600">{error}</p>
+      )}
+
+      <div className="space-y-4">
+        {users
+          .filter((user) => user.role !== "admin")
+          .map((user) => (
+            <article
+              key={user._id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-4"
+            >
+              <div>
+                <h3 className="font-semibold">
+                  {user.name || "Unnamed user"}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {user.email || "No email"}
+                </p>
+                <p className="mt-1 text-sm">
+                  {user.isTrustedLender
+                    ? "Trusted Lender"
+                    : "Standard lender"}
+                </p>
+              </div>
+
+              <button
+                onClick={() =>
+                  handleToggle(user._id, !user.isTrustedLender)
+                }
+                disabled={busyId === user._id}
+                className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {busyId === user._id
+                  ? "Updating..."
+                  : user.isTrustedLender
+                    ? "Remove Trusted Status"
+                    : "Mark as Trusted Lender"}
+              </button>
+            </article>
+          ))}
+      </div>
     </section>
   );
 }
