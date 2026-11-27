@@ -6,13 +6,17 @@ import { v } from "convex/values";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
-      .query("tools")
-      .withIndex("by_status", (q) =>
-        q.eq("status", "available")
-      )
-      .order("desc")
-      .collect();
+
+	const tools = await ctx.db
+	  .query("tools")
+	  .withIndex("by_status", (q) =>
+	    q.eq("status", "available")
+	  )
+	  .order("desc")
+	  .collect();
+
+	return tools.filter((tool) => !tool.isDeleted);
+
   },
 });
 
@@ -69,10 +73,14 @@ export const listAll = query({
       throw new Error("You do not have permission to view all tools.");
     }
 
-    return await ctx.db
-      .query("tools")
-      .order("desc")
-      .take(200);
+
+	const tools = await ctx.db
+	  .query("tools")
+	  .order("desc")
+	  .take(200);
+
+	return tools.filter((tool) => !tool.isDeleted);
+
   },
 });
 
@@ -86,9 +94,9 @@ export const getById = query({
   handler: async (ctx, args) => {
     const tool = await ctx.db.get(args.id);
 
-    if (!tool || tool.status !== "available") {
-      return null;
-    }
+	if (!tool || tool.status !== "available" || tool.isDeleted) {
+	  return null;
+	}
 
     return tool;
   },
@@ -261,19 +269,29 @@ export const remove = mutation({
       throw new Error("You do not have permission to remove this tool.");
     }
 
-    const requests = await ctx.db
-      .query("borrowRequests")
-      .withIndex("by_tool", (q) =>
-        q.eq("toolId", args.id)
-      )
-      .take(1);
+const requests = await ctx.db
+	  .query("borrowRequests")
+	  .withIndex("by_tool", (q) =>
+	    q.eq("toolId", args.id)
+	  )
+	  .take(1);
 
-    if (requests.length > 0) {
-      throw new Error(
-        "This tool has borrowing history and cannot be deleted."
-      );
-    }
+	if (user.role === "admin") {
+	  await ctx.db.patch(args.id, {
+	    isDeleted: true,
+	    status: "unavailable",
+	    updatedAt: Date.now(),
+	  });
+	  return;
+	}
 
-    await ctx.db.delete("tools", args.id);
+	if (requests.length > 0) {
+	  throw new Error(
+	    "This tool has borrowing history and cannot be deleted."
+	  );
+	}
+
+	await ctx.db.delete("tools", args.id);
+
   },
 });

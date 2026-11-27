@@ -2,8 +2,10 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
+
 
 export default function AdminPage() {
   const currentUser = useQuery(api.users.getCurrentUser);
@@ -35,12 +37,44 @@ export default function AdminPage() {
 function AdminTools() {
   const tools = useQuery(api.tools.listAll);
 
+
+  const removeTool = useMutation(api.tools.remove);
+const [busyId, setBusyId] = useState<string | null>(null);
+const [error, setError] = useState<string | null>(null);
+
+async function handleRemove(id: (typeof tools extends (infer T)[] | undefined
+  ? T extends { _id: infer ID }
+    ? ID
+    : never
+  : never)) {
+  if (!window.confirm("Are you sure you want to remove this listing?")) {
+    return;
+  }
+
+  setError(null);
+  setBusyId(id);
+
+  try {
+    await removeTool({ id });
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : "Failed to remove listing."
+    );
+  } finally {
+    setBusyId(null);
+  }
+}
+
+
   if (tools === undefined) {
     return <p className="p-8">Loading admin dashboard...</p>;
   }
 
   return (
     <main className="mx-auto max-w-5xl p-8">
+	{error && (
+	  <p className="mb-4 text-sm text-red-600">{error}</p>
+	)}
       <h1 className="mb-6 text-3xl font-bold">
         Admin Dashboard
       </h1>
@@ -90,6 +124,15 @@ function AdminTools() {
               <p className="text-xs text-gray-500">
                 Owner ID: {tool.ownerId}
               </p>
+
+		<button
+		  onClick={() => handleRemove(tool._id)}
+		  disabled={busyId === tool._id}
+		  className="mt-3 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+		>
+		  {busyId === tool._id ? "Removing..." : "Remove listing"}
+		</button>
+
             </article>
           ))}
         </div>

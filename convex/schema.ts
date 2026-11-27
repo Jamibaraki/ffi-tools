@@ -29,6 +29,7 @@ export default defineSchema({
       v.literal("unavailable"),
       v.literal("maintenance")
     ),
+    isDeleted: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
