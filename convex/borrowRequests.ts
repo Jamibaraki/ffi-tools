@@ -44,6 +44,53 @@ export const listIncoming = query({
 });
 
 
+// Return all borrowing requests for administrators.
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new Error("You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) =>
+        q.eq("clerkId", identity.subject)
+      )
+      .unique();
+
+    if (!user || user.role !== "admin") {
+      throw new Error(
+        "You do not have permission to view all borrowing requests."
+      );
+    }
+
+    const requests = await ctx.db
+      .query("borrowRequests")
+      .order("desc")
+      .take(200);
+
+    return await Promise.all(
+      requests.map(async (request) => {
+        const tool = await ctx.db.get(request.toolId);
+        const borrower = await ctx.db.get(request.borrowerId);
+        const owner = await ctx.db.get(request.ownerId);
+
+        return {
+          ...request,
+          toolTitle: tool?.title ?? "Deleted tool",
+          borrowerName: borrower?.name ?? "Unknown user",
+          ownerName: owner?.name ?? "Unknown user",
+        };
+      })
+    );
+  },
+});
+
+
+
 
 export const listMine = query({
   args: {},

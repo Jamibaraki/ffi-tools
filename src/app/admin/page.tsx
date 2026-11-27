@@ -137,7 +137,71 @@ async function handleRemove(id: (typeof tools extends (infer T)[] | undefined
           ))}
         </div>
       )}
+    <AdminLoans />
     </main>
+  );
+}
+
+
+
+function AdminLoans() {
+  const requests = useQuery(api.borrowRequests.listAll);
+
+  if (requests === undefined) {
+    return <p>Loading borrowing requests...</p>;
+  }
+
+  return (
+    <section className="mt-10">
+      <h2 className="mb-4 text-2xl font-semibold">
+        All Borrowing Requests ({requests.length})
+      </h2>
+
+      {requests.length === 0 ? (
+        <p className="text-gray-600">
+          No borrowing requests have been made yet.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {requests.map((request) => (
+            <article
+              key={request._id}
+              className="rounded-lg border border-gray-200 p-4"
+            >
+              <h3 className="text-lg font-semibold">
+                {request.toolTitle}
+              </h3>
+
+              <p className="mt-1">
+                Borrower: {request.borrowerName}
+              </p>
+
+              <p>
+                Owner: {request.ownerName}
+              </p>
+
+              <p className="mt-2 text-sm text-gray-600">
+                {new Date(request.startDate).toLocaleDateString()} –{" "}
+                {new Date(request.endDate).toLocaleDateString()}
+              </p>
+
+              <p className="mt-2">
+                Status:{" "}
+                <span className="font-semibold capitalize">
+                  {request.status}
+                </span>
+              </p>
+
+              {request.message && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Message: {request.message}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
