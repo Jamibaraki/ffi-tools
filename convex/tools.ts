@@ -41,13 +41,18 @@ export const listMine = query({
       return [];
     }
 
-    return await ctx.db
-      .query("tools")
-      .withIndex("by_owner", (q) =>
-        q.eq("ownerId", user._id)
-      )
-      .order("desc")
-      .take(100);
+
+	const tools = await ctx.db
+	  .query("tools")
+	  .withIndex("by_owner", (q) =>
+	    q.eq("ownerId", user._id)
+	  )
+	  .order("desc")
+	  .take(100);
+
+	return tools.filter((tool) => !tool.isDeleted);
+
+
   },
 });
 
@@ -202,6 +207,11 @@ export const update = mutation({
     if (!tool) {
       throw new Error("Tool not found.");
     }
+
+    if (tool.isDeleted) {
+      throw new Error("This tool has been deleted.");
+    }
+
 
     if (tool.ownerId !== user._id && user.role !== "admin") {
       throw new Error("You do not have permission to edit this tool.");

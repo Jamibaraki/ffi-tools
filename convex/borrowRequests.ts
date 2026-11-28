@@ -162,11 +162,14 @@ export const create = mutation({
     }
 
     // Find the requested tool.
+
+
     const tool = await ctx.db.get(args.toolId);
 
-    if (!tool || tool.status !== "available") {
+    if (!tool || tool.status !== "available" || tool.isDeleted) {
       throw new Error("This tool is not available.");
     }
+
 
     // Prevent owners from borrowing their own tools.
     if (tool.ownerId === borrower._id) {
@@ -274,9 +277,9 @@ export const review = mutation({
     if (args.decision === "approved") {
       const tool = await ctx.db.get(request.toolId);
 
-      if (!tool || tool.status !== "available") {
-        throw new Error("This tool is no longer available.");
-      }
+    if (!tool || tool.status !== "available" || tool.isDeleted) {
+      throw new Error("This tool is no longer available.");
+    }
 
       // Check that no other active request overlaps these dates.
       const existingRequests = await ctx.db
